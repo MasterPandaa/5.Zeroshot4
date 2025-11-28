@@ -1,7 +1,8 @@
-import sys
 import random
+import sys
+from typing import List, Optional, Tuple
+
 import pygame
-from typing import List, Tuple, Optional
 
 # ----------------------------------------------
 # Configuration
@@ -11,9 +12,9 @@ ROWS, COLS = 8, 8
 TILE_SIZE = WIDTH // COLS
 
 LIGHT_COLOR = (240, 217, 181)  # light squares
-DARK_COLOR = (181, 136, 99)     # dark squares
+DARK_COLOR = (181, 136, 99)  # dark squares
 HIGHLIGHT_MOVE = (30, 144, 255, 130)  # semi-transparent blue
-HIGHLIGHT_SELECT = (0, 255, 0, 120)   # semi-transparent green
+HIGHLIGHT_SELECT = (0, 255, 0, 120)  # semi-transparent green
 CHECK_RED = (220, 20, 60, 120)
 
 FPS = 60
@@ -26,15 +27,16 @@ UNICODE_PIECES = {
     ("w", "B"): "\u2657",
     ("w", "N"): "\u2658",
     ("w", "P"): "\u2659",
-    ("b", "K"): "\u265A",
-    ("b", "Q"): "\u265B",
-    ("b", "R"): "\u265C",
-    ("b", "B"): "\u265D",
-    ("b", "N"): "\u265E",
-    ("b", "P"): "\u265F",
+    ("b", "K"): "\u265a",
+    ("b", "Q"): "\u265b",
+    ("b", "R"): "\u265c",
+    ("b", "B"): "\u265d",
+    ("b", "N"): "\u265e",
+    ("b", "P"): "\u265f",
 }
 
 PIECE_VALUES = {"K": 0, "Q": 9, "R": 5, "B": 3, "N": 3, "P": 1}
+
 
 # ----------------------------------------------
 # Data Model
@@ -42,13 +44,15 @@ PIECE_VALUES = {"K": 0, "Q": 9, "R": 5, "B": 3, "N": 3, "P": 1}
 class Piece:
     def __init__(self, color: str, kind: str):
         self.color = color  # 'w' or 'b'
-        self.kind = kind    # 'K','Q','R','B','N','P'
+        self.kind = kind  # 'K','Q','R','B','N','P'
 
     def __repr__(self):
         return f"{self.color}{self.kind}"
 
+
 Board = List[List[Optional[Piece]]]
 Move = Tuple[Tuple[int, int], Tuple[int, int]]  # ((r1,c1),(r2,c2))
+
 
 # ----------------------------------------------
 # Game Logic
@@ -146,7 +150,9 @@ def generate_legal_moves(board: Board, color: str) -> List[Move]:
             legal.append(m)
     return legal
 
+
 # -- Per-piece generators
+
 
 def pawn_moves(board: Board, r: int, c: int, p: Piece, moves: List[Move]):
     dir = -1 if p.color == "w" else 1
@@ -163,7 +169,11 @@ def pawn_moves(board: Board, r: int, c: int, p: Piece, moves: List[Move]):
     for dc in (-1, 1):
         nc = c + dc
         nr = r + dir
-        if in_bounds(nr, nc) and board[nr][nc] is not None and board[nr][nc].color != p.color:
+        if (
+            in_bounds(nr, nc)
+            and board[nr][nc] is not None
+            and board[nr][nc].color != p.color
+        ):
             moves.append(((r, c), (nr, nc)))
 
 
@@ -178,7 +188,14 @@ def knight_moves(board: Board, r: int, c: int, p: Piece, moves: List[Move]):
             moves.append(((r, c), (nr, nc)))
 
 
-def slide_moves(board: Board, r: int, c: int, p: Piece, moves: List[Move], deltas: List[Tuple[int, int]]):
+def slide_moves(
+    board: Board,
+    r: int,
+    c: int,
+    p: Piece,
+    moves: List[Move],
+    deltas: List[Tuple[int, int]],
+):
     for dr, dc in deltas:
         nr, nc = r + dr, c + dc
         while in_bounds(nr, nc):
@@ -202,7 +219,14 @@ def rook_moves(board: Board, r: int, c: int, p: Piece, moves: List[Move]):
 
 
 def queen_moves(board: Board, r: int, c: int, p: Piece, moves: List[Move]):
-    slide_moves(board, r, c, p, moves, [(1, 1), (1, -1), (-1, 1), (-1, -1), (1, 0), (-1, 0), (0, 1), (0, -1)])
+    slide_moves(
+        board,
+        r,
+        c,
+        p,
+        moves,
+        [(1, 1), (1, -1), (-1, 1), (-1, -1), (1, 0), (-1, 0), (0, 1), (0, -1)],
+    )
 
 
 def king_moves(board: Board, r: int, c: int, p: Piece, moves: List[Move]):
@@ -217,9 +241,11 @@ def king_moves(board: Board, r: int, c: int, p: Piece, moves: List[Move]):
             if q is None or q.color != p.color:
                 moves.append(((r, c), (nr, nc)))
 
+
 # ----------------------------------------------
 # AI (very simple material evaluation one-ply)
 # ----------------------------------------------
+
 
 def evaluate_material(board: Board) -> int:
     # Positive if White is ahead, negative if Black ahead
@@ -251,6 +277,7 @@ def ai_choose_move(board: Board, color: str) -> Optional[Move]:
             best_moves.append(m)
     return random.choice(best_moves) if best_moves else random.choice(legal)
 
+
 # ----------------------------------------------
 # Rendering
 # ----------------------------------------------
@@ -267,7 +294,13 @@ class Renderer:
         pygame.font.init()
         # Try fonts that likely support chess glyphs
         candidates = [
-            "DejaVu Sans", "Arial Unicode MS", "Segoe UI Symbol", "Noto Sans Symbols", "Symbola", "Cambria", "Arial"
+            "DejaVu Sans",
+            "Arial Unicode MS",
+            "Segoe UI Symbol",
+            "Noto Sans Symbols",
+            "Symbola",
+            "Cambria",
+            "Arial",
         ]
         for name in candidates:
             try:
@@ -285,23 +318,37 @@ class Renderer:
             self.font = pygame.font.SysFont(None, TILE_SIZE - 10)
             self.use_unicode = False
 
-    def draw_board(self, board: Board, selected: Optional[Tuple[int,int]], legal_moves_for_selected: List[Tuple[int,int]], in_check_square: Optional[Tuple[int,int]]):
+    def draw_board(
+        self,
+        board: Board,
+        selected: Optional[Tuple[int, int]],
+        legal_moves_for_selected: List[Tuple[int, int]],
+        in_check_square: Optional[Tuple[int, int]],
+    ):
         # Draw squares
         for r in range(ROWS):
             for c in range(COLS):
                 color = LIGHT_COLOR if (r + c) % 2 == 0 else DARK_COLOR
-                pygame.draw.rect(self.screen, color, (c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE))
+                pygame.draw.rect(
+                    self.screen,
+                    color,
+                    (c * TILE_SIZE, r * TILE_SIZE, TILE_SIZE, TILE_SIZE),
+                )
         # Highlight selected
         if selected:
             sr, sc = selected
-            self.overlay.fill((0,0,0,0))
-            pygame.draw.rect(self.overlay, HIGHLIGHT_SELECT, (0, 0, TILE_SIZE, TILE_SIZE))
+            self.overlay.fill((0, 0, 0, 0))
+            pygame.draw.rect(
+                self.overlay, HIGHLIGHT_SELECT, (0, 0, TILE_SIZE, TILE_SIZE)
+            )
             self.screen.blit(self.overlay, (sc * TILE_SIZE, sr * TILE_SIZE))
         # Highlight legal moves
-        for (mr, mc) in legal_moves_for_selected:
+        for mr, mc in legal_moves_for_selected:
             center = (mc * TILE_SIZE + TILE_SIZE // 2, mr * TILE_SIZE + TILE_SIZE // 2)
             surf = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
-            pygame.draw.circle(surf, HIGHLIGHT_MOVE, (TILE_SIZE//2, TILE_SIZE//2), TILE_SIZE//6)
+            pygame.draw.circle(
+                surf, HIGHLIGHT_MOVE, (TILE_SIZE // 2, TILE_SIZE // 2), TILE_SIZE // 6
+            )
             self.screen.blit(surf, (mc * TILE_SIZE, mr * TILE_SIZE))
         # Highlight check
         if in_check_square:
@@ -325,7 +372,7 @@ class Renderer:
             # Outline effect: draw text twice with offset
             text_outline = self.font.render(glyph, True, (0, 0, 0))
             text_main = self.font.render(glyph, True, color)
-            rect_o = text_outline.get_rect(center=(x+1, y+1))
+            rect_o = text_outline.get_rect(center=(x + 1, y + 1))
             rect = text_main.get_rect(center=(x, y))
             self.screen.blit(text_outline, rect_o)
             self.screen.blit(text_main, rect)
@@ -334,29 +381,105 @@ class Renderer:
             base_color = (20, 20, 20) if piece.color == "b" else (235, 235, 235)
             edge = (0, 0, 0)
             if piece.kind == "P":
-                pygame.draw.circle(self.screen, base_color, (x, y), TILE_SIZE//4)
-                pygame.draw.circle(self.screen, edge, (x, y), TILE_SIZE//4, 2)
+                pygame.draw.circle(self.screen, base_color, (x, y), TILE_SIZE // 4)
+                pygame.draw.circle(self.screen, edge, (x, y), TILE_SIZE // 4, 2)
             elif piece.kind == "R":
-                rect = pygame.Rect(0, 0, TILE_SIZE//2, TILE_SIZE//2)
+                rect = pygame.Rect(0, 0, TILE_SIZE // 2, TILE_SIZE // 2)
                 rect.center = (x, y)
                 pygame.draw.rect(self.screen, base_color, rect)
                 pygame.draw.rect(self.screen, edge, rect, 2)
             elif piece.kind == "N":
-                points = [(x - TILE_SIZE//4, y + TILE_SIZE//4), (x, y - TILE_SIZE//4), (x + TILE_SIZE//4, y + TILE_SIZE//4)]
+                points = [
+                    (x - TILE_SIZE // 4, y + TILE_SIZE // 4),
+                    (x, y - TILE_SIZE // 4),
+                    (x + TILE_SIZE // 4, y + TILE_SIZE // 4),
+                ]
                 pygame.draw.polygon(self.screen, base_color, points)
                 pygame.draw.polygon(self.screen, edge, points, 2)
             elif piece.kind == "B":
-                pygame.draw.ellipse(self.screen, base_color, (x - TILE_SIZE//4, y - TILE_SIZE//3, TILE_SIZE//2, TILE_SIZE//1.5))
-                pygame.draw.ellipse(self.screen, edge, (x - TILE_SIZE//4, y - TILE_SIZE//3, TILE_SIZE//2, TILE_SIZE//1.5), 2)
+                pygame.draw.ellipse(
+                    self.screen,
+                    base_color,
+                    (
+                        x - TILE_SIZE // 4,
+                        y - TILE_SIZE // 3,
+                        TILE_SIZE // 2,
+                        TILE_SIZE // 1.5,
+                    ),
+                )
+                pygame.draw.ellipse(
+                    self.screen,
+                    edge,
+                    (
+                        x - TILE_SIZE // 4,
+                        y - TILE_SIZE // 3,
+                        TILE_SIZE // 2,
+                        TILE_SIZE // 1.5,
+                    ),
+                    2,
+                )
             elif piece.kind == "Q":
-                pygame.draw.circle(self.screen, base_color, (x, y - TILE_SIZE//6), TILE_SIZE//6)
-                pygame.draw.rect(self.screen, base_color, (x - TILE_SIZE//4, y - TILE_SIZE//8, TILE_SIZE//2, TILE_SIZE//3))
-                pygame.draw.rect(self.screen, edge, (x - TILE_SIZE//4, y - TILE_SIZE//8, TILE_SIZE//2, TILE_SIZE//3), 2)
+                pygame.draw.circle(
+                    self.screen, base_color, (x, y - TILE_SIZE // 6), TILE_SIZE // 6
+                )
+                pygame.draw.rect(
+                    self.screen,
+                    base_color,
+                    (
+                        x - TILE_SIZE // 4,
+                        y - TILE_SIZE // 8,
+                        TILE_SIZE // 2,
+                        TILE_SIZE // 3,
+                    ),
+                )
+                pygame.draw.rect(
+                    self.screen,
+                    edge,
+                    (
+                        x - TILE_SIZE // 4,
+                        y - TILE_SIZE // 8,
+                        TILE_SIZE // 2,
+                        TILE_SIZE // 3,
+                    ),
+                    2,
+                )
             elif piece.kind == "K":
-                pygame.draw.rect(self.screen, base_color, (x - TILE_SIZE//5, y - TILE_SIZE//5, TILE_SIZE//2.5, TILE_SIZE//2.5))
-                pygame.draw.rect(self.screen, edge, (x - TILE_SIZE//5, y - TILE_SIZE//5, TILE_SIZE//2.5, TILE_SIZE//2.5), 2)
-                pygame.draw.line(self.screen, edge, (x, y - TILE_SIZE//3), (x, y - TILE_SIZE//7), 2)
-                pygame.draw.line(self.screen, edge, (x - TILE_SIZE//10, y - TILE_SIZE//5), (x + TILE_SIZE//10, y - TILE_SIZE//5), 2)
+                pygame.draw.rect(
+                    self.screen,
+                    base_color,
+                    (
+                        x - TILE_SIZE // 5,
+                        y - TILE_SIZE // 5,
+                        TILE_SIZE // 2.5,
+                        TILE_SIZE // 2.5,
+                    ),
+                )
+                pygame.draw.rect(
+                    self.screen,
+                    edge,
+                    (
+                        x - TILE_SIZE // 5,
+                        y - TILE_SIZE // 5,
+                        TILE_SIZE // 2.5,
+                        TILE_SIZE // 2.5,
+                    ),
+                    2,
+                )
+                pygame.draw.line(
+                    self.screen,
+                    edge,
+                    (x, y - TILE_SIZE // 3),
+                    (x, y - TILE_SIZE // 7),
+                    2,
+                )
+                pygame.draw.line(
+                    self.screen,
+                    edge,
+                    (x - TILE_SIZE // 10, y - TILE_SIZE // 5),
+                    (x + TILE_SIZE // 10, y - TILE_SIZE // 5),
+                    2,
+                )
+
 
 # ----------------------------------------------
 # Game Controller
@@ -368,14 +491,14 @@ class Game:
         pygame.display.set_caption("Chess - Pygame")
         self.clock = pygame.time.Clock()
         self.board = initial_board()
-        self.turn = 'w'  # white to move
-        self.selected: Optional[Tuple[int,int]] = None
-        self.legal_for_selected: List[Tuple[int,int]] = []
+        self.turn = "w"  # white to move
+        self.selected: Optional[Tuple[int, int]] = None
+        self.legal_for_selected: List[Tuple[int, int]] = []
         self.renderer = Renderer(self.screen)
         self.game_over = False
         self.result_text = ""
 
-    def square_at_pixel(self, pos: Tuple[int,int]) -> Optional[Tuple[int,int]]:
+    def square_at_pixel(self, pos: Tuple[int, int]) -> Optional[Tuple[int, int]]:
         x, y = pos
         c = x // TILE_SIZE
         r = y // TILE_SIZE
@@ -395,7 +518,7 @@ class Game:
         all_legals = generate_legal_moves(self.board, self.turn)
         self.legal_for_selected = [dst for (src, dst) in all_legals if src == (r, c)]
 
-    def click(self, pos: Tuple[int,int]):
+    def click(self, pos: Tuple[int, int]):
         if self.game_over:
             return
         sq = self.square_at_pixel(pos)
@@ -425,7 +548,7 @@ class Game:
         self.board = make_move(self.board, move)
         self.selected = None
         self.legal_for_selected = []
-        self.turn = 'b' if self.turn == 'w' else 'w'
+        self.turn = "b" if self.turn == "w" else "w"
         self.check_game_end()
 
     def check_game_end(self):
@@ -434,7 +557,11 @@ class Game:
         if not legal:
             if is_in_check(self.board, self.turn):
                 self.game_over = True
-                self.result_text = "Checkmate! " + ("White" if self.turn == 'b' else "Black") + " wins."
+                self.result_text = (
+                    "Checkmate! "
+                    + ("White" if self.turn == "b" else "Black")
+                    + " wins."
+                )
             else:
                 self.game_over = True
                 self.result_text = "Stalemate! Draw."
@@ -442,14 +569,14 @@ class Game:
     def ai_move_if_needed(self):
         if self.game_over:
             return
-        if self.turn == 'b':
+        if self.turn == "b":
             pygame.time.delay(200)  # small delay for UX
-            mv = ai_choose_move(self.board, 'b')
+            mv = ai_choose_move(self.board, "b")
             if mv is None:
                 self.check_game_end()
                 return
             self.board = make_move(self.board, mv)
-            self.turn = 'w'
+            self.turn = "w"
             self.check_game_end()
 
     def draw(self):
@@ -457,7 +584,9 @@ class Game:
         if is_in_check(self.board, self.turn):
             kp = find_king(self.board, self.turn)
             in_check_sq = kp
-        self.renderer.draw_board(self.board, self.selected, self.legal_for_selected, in_check_sq)
+        self.renderer.draw_board(
+            self.board, self.selected, self.legal_for_selected, in_check_sq
+        )
         if self.game_over:
             self.draw_game_over()
         pygame.display.flip()
@@ -468,15 +597,17 @@ class Game:
         self.screen.blit(overlay, (0, 0))
         font = pygame.font.SysFont(None, 48)
         text = font.render(self.result_text, True, (255, 255, 255))
-        rect = text.get_rect(center=(WIDTH//2, HEIGHT//2))
+        rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
         self.screen.blit(text, rect)
-        sub = pygame.font.SysFont(None, 28).render("Press R to Restart or ESC to Quit", True, (230, 230, 230))
-        rect2 = sub.get_rect(center=(WIDTH//2, HEIGHT//2 + 40))
+        sub = pygame.font.SysFont(None, 28).render(
+            "Press R to Restart or ESC to Quit", True, (230, 230, 230)
+        )
+        rect2 = sub.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 40))
         self.screen.blit(sub, rect2)
 
     def restart(self):
         self.board = initial_board()
-        self.turn = 'w'
+        self.turn = "w"
         self.selected = None
         self.legal_for_selected = []
         self.game_over = False
